@@ -1,0 +1,41 @@
+name: CI
+
+on: [push]
+
+jobs:
+  test:
+    name: Test
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Set up locale
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y locales-all
+
+    - name: Check system locale
+      run: locale
+
+    - name: Setup PHP 5.6
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: 5.6
+        coverage: xdebug
+
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: composer install --prefer-dist --no-progress --no-suggest
+
+    - name: Apply patch
+      run: patch -p1 < a.patch
+
+    - name: Run test suite
+      run: fuel/vendor/bin/phpunit -c fuel/core/phpunit.xml --group Core --coverage-html coverage
+
+    - name: Upload coverage
+      uses: actions/upload-artifact@v4
+      with:
+        path: coverage
