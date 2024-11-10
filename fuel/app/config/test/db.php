@@ -25,7 +25,7 @@
 return array(
 	'default' => array(
 		'connection' => array(
-			'dsn'      => 'mysql:host=localhost;dbname=fuel_test',
+			'dsn'      => 'mysql:host=' . (getenv('DB_HOST') ?: 'host.docker.internal') . ';dbname=fuel_test',
 			'username' => 'fuel_app',
 			'password' => 'super_secret_password',
 		),

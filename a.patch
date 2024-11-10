@@ -634,15 +634,41 @@ index d74e12eb..dfdd7e1b 100644
  		$end   = Date::create_from_string('2015-10-02', '%Y-%m-%d');
  		$range = Date::range_to_array($start, $end, "-2 days");
 diff --git a/tests/db.php b/tests/db.php
-index 82681851..35c5a02d 100644
+index 82681851..bf2345b6 100644
 --- a/fuel/core/tests/db.php
 +++ b/fuel/core/tests/db.php
-@@ -20,5 +20,5 @@ namespace Fuel\Core;
+@@ -20,5 +20,31 @@ namespace Fuel\Core;
   */
  class Test_Db extends TestCase
  {
 - 	public function test_foo() {}
-+	public function test_foo() { $this->assertTrue(true); }
++	public static function setUpBeforeClass(): void
++	{
++		DB::query(
++			'CREATE TABLE IF NOT EXISTS users (' .
++			'id INT AUTO_INCREMENT PRIMARY KEY,' .
++			'username VARCHAR(50) NOT NULL,' .
++			'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,' .
++			'updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP' .
++			')'
++		)->execute();
++		DB::query('TRUNCATE TABLE users');
++		$data = [
++			['username' => 'alice'],
++			['username' => 'bob'],
++		];
++		DB::insert('users')
++			->columns(array_keys($data[0]))
++			->values($data)
++			->execute();
++	}
++
++	public function test_query() {
++		$query = DB::query('SELECT * FROM users WHERE id = 1');
++		$result = $query->execute()->as_array();
++		$this->assertCount(1, $result);
++		$this->assertSame('alice', $result[0]['username']);
++	}
  }
 diff --git a/tests/dbutil.php b/tests/dbutil.php
 index c7be9974..366a2e52 100644
@@ -1205,10 +1231,52 @@ index f55591ca..892d18a0 100644
 +	public function test_foo() { $this->assertTrue(true); }
  }
 diff --git a/tests/router.php b/tests/router.php
-index a170cc55..b45f8d23 100644
+index a170cc55..7c79e622 100644
 --- a/fuel/core/tests/router.php
 +++ b/fuel/core/tests/router.php
-@@ -23,7 +23,7 @@ class Test_Router extends TestCase
+@@ -12,6 +12,41 @@
+ 
+ namespace Fuel\Core;
+ 
++/**
++ * Mock for Router. Static functions are not fun to unit test.
++ * PHPUnit 4 removes staticExpects, this mock class is a workaround.
++ */
++
++class Test_Router_Mock extends Router
++{
++	public static $check_class = null;
++	public static $get_prefix = null;
++
++	/**
++	 * Proxy to $check_class.
++	 *
++	 * @see Router::check_class()
++	 */
++	protected static function check_class($class)
++	{
++		$callback =  static::$check_class;
++
++		return $callback($class);
++	}
++
++	/**
++	 * Proxy to $get_prefix.
++	 *
++	 * @see Router::get_prefix()
++	 */
++	protected static function get_prefix()
++	{
++		$callback =  static::$get_prefix;
++
++		return $callback();
++	}
++}
++
+ /**
+  * Router class tests
+  *
+@@ -23,7 +58,7 @@ class Test_Router extends TestCase
      /**
       * Provider for test_classnames.
       */
@@ -1217,6 +1285,60 @@ index a170cc55..b45f8d23 100644
      {
          return array(
              array(
+diff --git a/tests/router/mock.php b/tests/router/mock.php
+deleted file mode 100644
+index a193a8f8..00000000
+--- a/fuel/core/tests/router/mock.php
++++ /dev/null
+@@ -1,48 +0,0 @@
+-<?php
+-/**
+- * Fuel is a fast, lightweight, community driven PHP 5.4+ framework.
+- *
+- * @package    Fuel
+- * @version    1.9-dev
+- * @author     Fuel Development Team
+- * @license    MIT License
+- * @copyright  2010 - 2019 Fuel Development Team
+- * @link       https://fuelphp.com
+- */
+-
+-namespace Fuel\Core;
+-
+-/**
+- * Mock for Router. Static functions are not fun to unit test.
+- * PHPUnit 4 removes staticExpects, this mock class is a workaround.
+- */
+-
+-class Test_Router_Mock extends Router
+-{
+-	public static $check_class = null;
+-	public static $get_prefix = null;
+-
+-	/**
+-	 * Proxy to $check_class.
+-	 *
+-	 * @see Router::check_class()
+-	 */
+-	protected static function check_class($class)
+-	{
+-		$callback =  static::$check_class;
+-
+-		return $callback($class);
+-	}
+-
+-	/**
+-	 * Proxy to $get_prefix.
+-	 *
+-	 * @see Router::get_prefix()
+-	 */
+-	protected static function get_prefix()
+-	{
+-		$callback =  static::$get_prefix;
+-
+-		return $callback();
+-	}
+-}
 diff --git a/tests/session.php b/tests/session.php
 index 487a8e3b..f30544bf 100644
 --- a/fuel/core/tests/session.php
